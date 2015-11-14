@@ -2,7 +2,10 @@
 title: "Activity Monitoring"
 author: "Bob Weiner"
 date: "November 12, 2015"
-output: html_document
+output: 
+  html_document: 
+    fig_caption: yes
+    self_contained: no
 ---
 
 ### Introduction
