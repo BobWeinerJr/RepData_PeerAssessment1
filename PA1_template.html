@@ -72,18 +72,23 @@ img {
 
 <div id="introduction" class="section level3">
 <h3>Introduction</h3>
-<pre class="r"><code>suppressMessages({      # dplyr masks objects from other packages 
-    library(stringr)
-    library(dplyr)
-})
+<p>This paper summarizes and reports activity data (in steps) for a single person over a 61 day period.</p>
+<div id="preliminary-code" class="section level4">
+<h4>Preliminary code</h4>
+<p>I begin by importing needed library packages and seting constants that will be used for reporting.</p>
+<pre class="r"><code># Import needed packages
+library(stringr)
+library(lattice)
+suppressMessages({ library(dplyr) })  # dplyr masks other objects
 
 # Constants
 workingDir &lt;- &quot;C:/Users/Bob/Dropbox/School/Coursera/Reproducible Research/RepData_PeerAssessment1&quot;
-
-histogram.cells = 15</code></pre>
+histogram.cells = 15
+line.ticks &lt;- 12</code></pre>
 </div>
-<div id="loading-and-preprocessing" class="section level3">
-<h3>Loading and Preprocessing</h3>
+<div id="loading-and-preprocessing" class="section level4">
+<h4>Loading and Preprocessing</h4>
+<p>Here, the data is loaded and the date column is converted to the date class to ease manipulation.</p>
 <pre class="r"><code># 1. Load the activity data
 act &lt;- read.csv(
     file = unzip(
@@ -94,24 +99,30 @@ act &lt;- read.csv(
 # 2. Transform data
 act$date &lt;- as.Date(act$date)</code></pre>
 </div>
-<div id="mean-total-steps-per-day" class="section level3">
-<h3>Mean Total Steps Per Day</h3>
+<div id="mean-total-steps-per-day" class="section level4">
+<h4>Mean Total Steps Per Day</h4>
+<p>The total raw activity is determined by summing the steps for each of the dates. The first 10 entries are provided to clarify the result.</p>
 <pre class="r"><code># 1. Calculate total steps per day
 act.total.raw &lt;- act %&gt;% 
     group_by(date) %&gt;% 
     summarise(total = sum(steps, na.rm = T))
 
-head(act.total.raw)</code></pre>
-<pre><code>## Source: local data frame [6 x 2]
+head(act.total.raw, 10)</code></pre>
+<pre><code>## Source: local data frame [10 x 2]
 ## 
-##         date total
-##       (date) (int)
-## 1 2012-10-01     0
-## 2 2012-10-02   126
-## 3 2012-10-03 11352
-## 4 2012-10-04 12116
-## 5 2012-10-05 13294
-## 6 2012-10-06 15420</code></pre>
+##          date total
+##        (date) (int)
+## 1  2012-10-01     0
+## 2  2012-10-02   126
+## 3  2012-10-03 11352
+## 4  2012-10-04 12116
+## 5  2012-10-05 13294
+## 6  2012-10-06 15420
+## 7  2012-10-07 11015
+## 8  2012-10-08     0
+## 9  2012-10-09 12811
+## 10 2012-10-10  9900</code></pre>
+<p>A histogram of steps shows a gross distribution of steps between the minimum and maximum values. The bimodal graph with an excessive number of steps below roughly 1400 could indicate user error or a sensor problem.</p>
 <pre class="r"><code># 2. Create Histogram
 hist (act.total.raw$total,
       breaks = seq(from = min(act.total.raw$total),
@@ -122,14 +133,16 @@ hist (act.total.raw$total,
       xlab = &#39;Steps&#39;
 )</code></pre>
 <div class="figure">
-<img src="PA1_template_files/figure-html/unnamed-chunk-3-1.png" />
+<img src="PA1_template_files/figure-html/unnamed-chunk-4-1.png" />
 </div>
 <pre class="r"><code># 3. Mean and median steps per day
 act.mean.raw &lt;- mean(act.total.raw$total)
 act.median.raw &lt;- median(act.total.raw$total)</code></pre>
+<p>The mean number of daily steps disregarding missing values is 9354.23 and the median is 10395.</p>
 </div>
-<div id="average-daily-activity-pattern" class="section level3">
-<h3>Average Daily Activity Pattern</h3>
+<div id="average-daily-activity-pattern" class="section level4">
+<h4>Average Daily Activity Pattern</h4>
+<p>The daily activity pattern is the mean number of steps taken at a given time of the day averaged across the entire 61 day period.</p>
 <pre class="r"><code># 1. Time series plot of 5-min interval and average steps
 #   Average Daily Pattern
 adp = act %&gt;% 
@@ -146,22 +159,24 @@ plot(adp$interval,
      xaxt = &#39;n&#39;)
 
 #   Add x-axis tick marks at every 2 hours
-ticks.num &lt;- 12
-ticks &lt;- adp$interval[0:(ticks.num-1) * (nrow(df)/ticks.num) + 1]
+ticks &lt;- adp$interval[0:(line.ticks-1) * (nrow(adp)/line.ticks) + 1]
 axis(side = 1, at = ticks)</code></pre>
 <div class="figure">
-<img src="PA1_template_files/figure-html/unnamed-chunk-4-1.png" />
+<img src="PA1_template_files/figure-html/unnamed-chunk-6-1.png" />
 </div>
+<p>This person wakes up around 5:30AM, spends a couple hours eating breakfast and getting ready for work (or their day, clearly there is no long drive involved), and maybe walks the dog around 8:00AM. Or possibly he/she gets the kids ready for school in the morning goes for a walk after the little ones are on the bus. 9:30-11:30PM is TV/bed.</p>
 <pre class="r"><code># 2. Max number of interval steps
-max(adp$meanSteps)</code></pre>
-<pre><code>## [1] 206.1698</code></pre>
+steps.max = max(adp$meanSteps)</code></pre>
+<p>The interval with the highest activity contains 206.17 steps.</p>
 </div>
-<div id="imputing-missing-values" class="section level3">
-<h3>Imputing Missing Values</h3>
+<div id="imputing-missing-values" class="section level4">
+<h4>Imputing Missing Values</h4>
+<p>If we choose not to remove missing values, we can provide reasonable estimates. (Note: my applied stats professor would have a bird.)</p>
 <pre class="r"><code># 1. Total number of rows with NAs
-steps.missing = sum(is.na(act$steps))
-
-# 2. Filling in missing values from adp and
+steps.missing = sum(is.na(act$steps))</code></pre>
+<p>The total number of missing values is 2304.</p>
+<p>Estimates for the missing data can be taken from the mean number of steps usually taken at that time. This is done by replacing NAs in the steps with data from the average daily pattern. The resulting histogram shows that this person <em>probably</em> gets their recommended 10K steps roughly 75% of the time. I say probably because we are extrapolating beyond what the data is giving us (i.e. guessing).</p>
+<pre class="r"><code># 2. Filling in missing values from adp and
 # 3. Create a new dataset
 newAct &lt;- act %&gt;% 
     inner_join(adp, by = &#39;interval&#39;) %&gt;%
@@ -184,19 +199,21 @@ hist(act.total.imputed$total,
      xlab = &#39;Steps&#39;
 )  </code></pre>
 <div class="figure">
-<img src="PA1_template_files/figure-html/unnamed-chunk-5-1.png" />
+<img src="PA1_template_files/figure-html/unnamed-chunk-9-1.png" />
 </div>
-<pre class="r"><code># 4b. Mean and median of total steps per day
+<p>Comparing the mean and median values for both cases (disregarding and imputing missing values) shows that there is not a large difference in the outcome.</p>
+<pre class="r"><code>options(scipen = 2, digits = 2)
+# 4b. Mean and median of total steps per day
 act.mean.imputed &lt;- mean(act.total.imputed$total)
 act.median.imputed &lt;- median(act.total.imputed$total)
 
 # 4c. Compare mean and median with and without imputed values 
 matrix(
     c(act.mean.raw,     
-      act.median.raw, 
+      act.mean.imputed, 
       abs(act.mean.imputed - act.mean.raw) / act.mean.raw,
       
-      act.mean.imputed, 
+      act.median.raw, 
       act.median.imputed, 
       abs(act.median.imputed - act.median.raw) / act.median.raw), 
     nrow = 3, 
@@ -205,14 +222,16 @@ matrix(
         c(&#39;Mean&#39;, &#39;Median&#39;)
     )
 )</code></pre>
-<pre><code>##                  Mean       Median
-## Raw      9.354230e+03 1.076619e+04
-## Imputed  1.039500e+04 1.076619e+04
-## % Change 1.509434e-01 3.570839e-02</code></pre>
+<pre><code>##              Mean    Median
+## Raw       9354.23 10395.000
+## Imputed  10766.19 10766.189
+## % Change     0.15     0.036</code></pre>
 <pre class="r"><code># 4d. Impact of imputing missing data</code></pre>
+<p>Imputing missing data increases the mean value by 15% but changes the median by less than 4%. It also makes the mean equal to the median which indicates that the resulting distribution is closer to normal. This can make the histogram more interpretable. While this is good for exploratory analysis, it should never be done to report experimental outcomes.</p>
 </div>
-<div id="differences-in-activity-patterns" class="section level3">
-<h3>Differences in Activity Patterns</h3>
+<div id="differences-in-activity-patterns" class="section level4">
+<h4>Differences in Activity Patterns</h4>
+<p>To differentiate between weekday and weekend activity, I added a column to the data that indicates ‘Weekend’ for Saturdays and Sundays and ‘Weekday’ for all others. This is then plotted using the lattice graphing system in a two-panel display for easy comparison.</p>
 <pre class="r"><code>library(lattice)
 
 # 1. Create factor variable for Weekend &amp; Weekday
@@ -232,7 +251,9 @@ xyplot(meanSteps ~ interval | weekday,
        xlab = &quot;Interval&quot;,
        ylab = &quot;Number of steps&quot;)</code></pre>
 <div class="figure">
-<img src="PA1_template_files/figure-html/unnamed-chunk-6-1.png" />
+<img src="PA1_template_files/figure-html/unnamed-chunk-11-1.png" />
+</div>
+<p>Like many people, this participant alters his/her daily activities on the weekends. He/she likes to sleep in but walks more throughout the day. Evenings are still casual and relaxed. Clearly, this person is not enrolled in a Coursera Data Science course.</p>
 </div>
 </div>
 

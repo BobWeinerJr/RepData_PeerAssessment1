@@ -9,22 +9,27 @@ output:
 ---
 
 ### Introduction
+This paper summarizes and reports activity data (in steps) for a single person over a 61 day period.  
+
+#### Preliminary code
+I begin by importing needed library packages and seting constants that will be used for reporting.
 
 ```{r echo=TRUE}
-suppressMessages({      # dplyr masks objects from other packages 
-    library(stringr)
-    library(dplyr)
-})
+# Import needed packages
+library(stringr)
+library(lattice)
+suppressMessages({ library(dplyr) })  # dplyr masks other objects
 
 # Constants
 workingDir <- "C:/Users/Bob/Dropbox/School/Coursera/Reproducible Research/RepData_PeerAssessment1"
-
 histogram.cells = 15
+line.ticks <- 12
 
 ```
 
 
-### Loading and Preprocessing
+#### Loading and Preprocessing
+Here, the data is loaded and the date column is converted to the date class to ease manipulation.
 
 ```{r echo=TRUE}
 # 1. Load the activity data
@@ -38,7 +43,10 @@ act <- read.csv(
 act$date <- as.Date(act$date)
 ```
 
-### Mean Total Steps Per Day  
+
+#### Mean Total Steps Per Day  
+The total raw activity is determined by summing the steps for each of the dates.  The first 10 entries are provided to clarify the result.
+
 ```{r echo=TRUE}
 
 # 1. Calculate total steps per day
@@ -46,8 +54,13 @@ act.total.raw <- act %>%
     group_by(date) %>% 
     summarise(total = sum(steps, na.rm = T))
 
-head(act.total.raw)
+head(act.total.raw, 10)
+```
 
+
+A histogram of steps shows a gross distribution of steps between the minimum and maximum values.  The bimodal graph with an excessive number of steps below roughly 1400 could indicate user error or a sensor problem.  
+
+```{r}
 # 2. Create Histogram
 hist (act.total.raw$total,
       breaks = seq(from = min(act.total.raw$total),
@@ -58,14 +71,19 @@ hist (act.total.raw$total,
       xlab = 'Steps'
 )
 
+```
+
+```{r echo=TRUE}
 # 3. Mean and median steps per day
 act.mean.raw <- mean(act.total.raw$total)
 act.median.raw <- median(act.total.raw$total)
 
 ```
 
+The mean number of daily steps disregarding missing values is `r format(act.mean.raw, digits=2, nsmall=2)` and the median is `r format(act.median.raw, digits=2, nsmall=2)`.  
 
-### Average Daily Activity Pattern
+#### Average Daily Activity Pattern
+The daily activity pattern is the mean number of steps taken at a given time of the day averaged across the entire 61 day period. 
 
 ```{r echo=TRUE}
 
@@ -85,22 +103,34 @@ plot(adp$interval,
      xaxt = 'n')
 
 #   Add x-axis tick marks at every 2 hours
-ticks.num <- 12
-ticks <- adp$interval[0:(ticks.num-1) * (nrow(df)/ticks.num) + 1]
+ticks <- adp$interval[0:(line.ticks-1) * (nrow(adp)/line.ticks) + 1]
 axis(side = 1, at = ticks)
+```
 
+This person wakes up around 5:30AM, spends a couple hours eating breakfast and getting ready for work (or their day, clearly there is no long drive involved), and maybe walks the dog around 8:00AM. Or possibly he/she gets the kids ready for school in the morning goes for a walk after the little ones are on the bus.  9:30-11:30PM is TV/bed.
+
+
+```{r echo=TRUE}
 # 2. Max number of interval steps
-max(adp$meanSteps)
+steps.max = max(adp$meanSteps)
 
 ```
 
+The interval with the highest activity contains `r format(steps.max, digits=2, nsmall=2)` steps.
 
-### Imputing Missing Values
+#### Imputing Missing Values
+If we choose not to remove missing values, we can provide reasonable estimates. (Note: my applied stats professor would have a bird.)
 
 ```{r echo=TRUE}
 # 1. Total number of rows with NAs
 steps.missing = sum(is.na(act$steps))
+```
 
+The total number of missing values is `r format(steps.missing, digits = 2, nsmall = 2)`.  
+
+Estimates for the missing data can be taken from the mean number of steps usually taken at that time.  This is done by replacing NAs in the steps with data from the average daily pattern.  The resulting histogram shows that this person *probably* gets their recommended 10K steps roughly 75% of the time. I say probably because we are extrapolating beyond what the data is giving us (i.e. guessing).
+
+```{r echo=TRUE}
 # 2. Filling in missing values from adp and
 # 3. Create a new dataset
 newAct <- act %>% 
@@ -124,6 +154,12 @@ hist(act.total.imputed$total,
      xlab = 'Steps'
 )  
 
+```
+
+Comparing the mean and median values for both cases (disregarding and imputing missing values) shows that there is not a large difference in the outcome. 
+
+```{r echo=TRUE}
+options(scipen = 2, digits = 2)
 # 4b. Mean and median of total steps per day
 act.mean.imputed <- mean(act.total.imputed$total)
 act.median.imputed <- median(act.total.imputed$total)
@@ -131,10 +167,10 @@ act.median.imputed <- median(act.total.imputed$total)
 # 4c. Compare mean and median with and without imputed values 
 matrix(
     c(act.mean.raw,     
-      act.median.raw, 
+      act.mean.imputed, 
       abs(act.mean.imputed - act.mean.raw) / act.mean.raw,
       
-      act.mean.imputed, 
+      act.median.raw, 
       act.median.imputed, 
       abs(act.median.imputed - act.median.raw) / act.median.raw), 
     nrow = 3, 
@@ -145,12 +181,13 @@ matrix(
 )
 
 # 4d. Impact of imputing missing data
-
-
 ```
+Imputing missing data increases the mean value by 15% but changes the median by less than 4%.  It also makes the mean equal to the median which indicates that the resulting distribution is closer to normal.  This can make the histogram more interpretable. While this is good for exploratory analysis, it should never be done to report experimental outcomes.
 
 
-### Differences in Activity Patterns
+#### Differences in Activity Patterns
+To differentiate between weekday and weekend activity, I added a column to the data that indicates 'Weekend' for Saturdays and Sundays and 'Weekday' for all others. This is then plotted using the lattice graphing system in a two-panel display for easy comparison.
+
 ```{r echo=TRUE}
 library(lattice)
 
@@ -173,6 +210,5 @@ xyplot(meanSteps ~ interval | weekday,
 
 ```
 
-
-
+Like many people, this participant alters his/her daily activities on the weekends.  He/she likes to sleep in but walks more throughout the day.  Evenings are still casual and relaxed. Clearly, this person is not enrolled in a Coursera Data Science course.
 
